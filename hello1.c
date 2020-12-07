@@ -16,12 +16,13 @@ struct timeit_list {
 	ktime_t before;
 	ktime_t after;
 };
-LIST_HEAD(head_node);
+
+static struct list_head head_node = LIST_HEAD_INIT(head_node);
 
 
 int print_hello(uint n)
 {
-	struct timeit_list *list;
+	struct timeit_list *list, *tmp;
 	uint i;
 
 	if (n < 0) {
@@ -37,13 +38,21 @@ int print_hello(uint n)
 
 	for (i = 0; i < n; i++) {
 		list = kmalloc(sizeof(struct timeit_list), GFP_KERNEL);
+		if(ZERO_OR_NULL_PTR(list)) goto clean_up;
 		list->before = ktime_get();
 		pr_info("Hello, world!\n");
 		list->after = ktime_get();
-		INIT_LIST_HEAD(&list->node);
 		list_add_tail(&list->node, &head_node);
 	}
 	return 0;
+
+clean_up:
+	list_for_each_entry_safe(list, tmp, &head_node, node) {
+		list_del(&list->node);
+		kfree(list);
+	}
+	pr_err("ERROR! Memory is out\n");
+	return -1;
 }
 EXPORT_SYMBOL(print_hello);
 
